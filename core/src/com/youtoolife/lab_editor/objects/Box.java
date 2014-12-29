@@ -1,7 +1,6 @@
 package com.youtoolife.lab_editor.objects;
 
 import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.Input.Keys;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.Vector2;
@@ -16,12 +15,14 @@ public class Box {
 	float width, height;
 	int i, y;
 	boolean turn_on;
+	String type = "";
+	String img = "";
 
   public Box(TextureRegion textureRegion, Vector2 position, float w, float h, int i, int y) {		
 	this.texture = textureRegion;
     this.position = position;
-    this.height = h;
-    this.width = w;
+    this.height = 50;
+    this.width = 50;
     this.i = i;
     this.y = y;
   }
@@ -33,15 +34,29 @@ public class Box {
   
   public void handleInput(float delta) {
 	  if (Gdx.input.justTouched()) {
-		  if (contains(Gdx.input.getX()+MainMenu.guiCam.position.x-512, 768-Gdx.input.getY()+MainMenu.guiCam.position.y-384)) {
+		  
+		  float w = Gdx.graphics.getWidth(), h = Gdx.graphics.getHeight(), 
+					dw = w/1024, dh = h/764, 
+					cX = Gdx.input.getX(), cY = Gdx.input.getY(),
+					x = cX/dw, y = 764 - cY/dh;
+		  
+		  if (contains(x+MainMenu.guiCam.position.x-512, y+MainMenu.guiCam.position.y-384)) {
 			  if (!turn_on) {
-			  setTexture(Assets.cileRedRegion, Assets.cileRedRegion.getRegionWidth(), Assets.cileRedRegion.getRegionHeight());
+			  setTexture(new TextureRegion(MainMenu.images.get(MainMenu.idImg).getTexture()), 
+					  MainMenu.images.get(MainMenu.idImg).getTexture().getWidth(), 
+					  MainMenu.images.get(MainMenu.idImg).getTexture().getHeight());
+			  this.type = MainMenu.currentType;
+			  this.img = MainMenu.currentImg;
 			  turn_on = true;
 			  } 
 			  else
 			  {
-				  setTexture(Assets.cileRegion, Assets.cileRegion.getRegionWidth(), Assets.cileRegion.getRegionHeight());
-				  turn_on = false;  
+				  setTexture(Assets.rectRegion, Assets.rectRegion.getRegionWidth(), Assets.rectRegion.getRegionHeight());
+				  turn_on = false;
+				  this.type = "";
+				  this.img = "";
+				  this.width = 50;
+				  this.height = 50;
 			  }
 		  }
 		}

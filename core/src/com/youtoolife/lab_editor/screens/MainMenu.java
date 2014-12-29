@@ -1,6 +1,5 @@
 package com.youtoolife.lab_editor.screens;
 
-
 import java.awt.Toolkit;
 import java.awt.datatransfer.StringSelection;
 import java.io.FileNotFoundException;
@@ -12,12 +11,15 @@ import java.io.UnsupportedEncodingException;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.ScreenAdapter;
 import com.badlogic.gdx.Input.Keys;
+import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.Sprite;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Stage;
+import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.scenes.scene2d.ui.TextArea;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
@@ -25,31 +27,52 @@ import com.badlogic.gdx.scenes.scene2d.ui.TextField;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.viewport.StretchViewport;
+import com.badlogic.gdx.utils.viewport.Viewport;
+import com.sun.prism.image.ViewPort;
 import com.youtoolife.lab_editor.LabEditor;
 import com.youtoolife.lab_editor.objects.Box;
 import com.youtoolife.lab_editor.utils.Assets;
 
 public class MainMenu extends ScreenAdapter {
-	Texture img;
+	
 	Stage stage;
 	Skin skin;
 	TextArea textArea;
-	TextField fileField, xField, yField;
+	TextField fileField, typeCField, xField, yField;
 	TextButton swipeBtn, saveBtn, loadBtn, copyBtn, editSize, clearAll, generateBtn, centerBtn;
+	
+	Array<Label> labels = new Array<Label>();
+	Array<Sprite> types = new Array<Sprite>();
+	public static Array<Sprite> images = new Array<Sprite>();
+	Array<String> imageNames = new Array<String>();
+	
+	public static String currentType = "", currentImg = "";
+	public static int idImg = 0;
+	
 	LabEditor game;
+	
 	public static OrthographicCamera guiCam;
 	int xSize, ySize;
 	
-	public static Array<Box> leds;
+	public static Array<Box> holsts;
 
 	public MainMenu (LabEditor game) {
 		this.game = game;
 		
-		leds = new Array<Box>();
+		holsts = new Array<Box>();
 		
 		guiCam = new OrthographicCamera(1024, 768);
 		guiCam.position.set(1024 / 2, 768 / 2, 0);
 		
+		createGui();
+		
+		refreshTypes();
+		
+		createHolsts();
+		
+	}
+	
+	public void createGui() {
 		skin = new Skin(Gdx.files.internal("uiskin.json"));
 		stage = new Stage(new StretchViewport(1024, 768));
 		
@@ -61,12 +84,19 @@ public class MainMenu extends ScreenAdapter {
 		swipeBtn.setText("^^^");
 		stage.addActor(swipeBtn);
 		///
-		fileField = new TextField("LED.c", skin);
+		fileField = new TextField("Untitled.chunk", skin);
 		fileField.setWidth(200);
 		fileField.setHeight(30);
 		fileField.setPosition(130, 250 + 30);
 		fileField.setVisible(false);
 		stage.addActor(fileField);
+		////
+		typeCField = new TextField("SingleExit", skin);
+		typeCField.setWidth(200);
+		typeCField.setHeight(30);
+		typeCField.setPosition(130, 250 + 30+31);
+		typeCField.setVisible(false);
+		stage.addActor(typeCField);
 		///
 		saveBtn = new TextButton("SAVE", skin);
 		saveBtn.setWidth(100);
@@ -89,19 +119,19 @@ public class MainMenu extends ScreenAdapter {
 		copyBtn.setVisible(false);
 		stage.addActor(copyBtn);
 		
-		textArea = new TextArea("LED[][] = {{}};", skin);
+		textArea = new TextArea("", skin);
 		textArea.setPosition(0, 0);
 		textArea.setWidth(1024);
 		textArea.setHeight(250);
 		textArea.setVisible(false);
 		stage.addActor(textArea);
 		
-		xField = new TextField("8", skin);
+		xField = new TextField("12", skin);
 		xField.setWidth(50);
 		xField.setHeight(30);
 		xField.setPosition(0, 768 - 30);
 		stage.addActor(xField);
-		yField = new TextField("8", skin);
+		yField = new TextField("12", skin);
 		yField.setWidth(50);
 		yField.setHeight(30);
 		yField.setPosition(60, 768 - 30);
@@ -138,6 +168,7 @@ public class MainMenu extends ScreenAdapter {
 					loadBtn.setVisible(true);
 					copyBtn.setVisible(true);
 					fileField.setVisible(true);
+					typeCField.setVisible(true);
 				}
 				else
 				{
@@ -148,6 +179,7 @@ public class MainMenu extends ScreenAdapter {
 					loadBtn.setVisible(false);
 					copyBtn.setVisible(false);
 					fileField.setVisible(false);
+					typeCField.setVisible(false);
 				}
 			}
 		});
@@ -179,12 +211,12 @@ public class MainMenu extends ScreenAdapter {
 		});
 		editSize.addListener(new ChangeListener() {
 			public void changed (ChangeEvent event, Actor actor) {
-				createLeds();
+				createHolsts();
 			}
 		});
 		clearAll.addListener(new ChangeListener() {
 			public void changed (ChangeEvent event, Actor actor) {
-				leds.clear();
+				holsts.clear();
 				xField.setText("0");
 				yField.setText("0");
 				xSize = ySize = 0;
@@ -192,11 +224,69 @@ public class MainMenu extends ScreenAdapter {
 		});
 		generateBtn.addListener(new ChangeListener() {
 			public void changed (ChangeEvent event, Actor actor) {
-				ledToBin();
+				createChunk();
 			}
 		});
-		createLeds();
-		
+	}
+	
+	
+	public void refreshTypes() {
+		labels.clear();
+		types.clear();
+		images.clear();
+		FileHandle file = Gdx.files.local("Types");
+		System.out.println(file.isDirectory());
+		if (file.isDirectory()) {
+		FileHandle[] files = file.list();
+		System.out.println(files.length);
+		for (int i = 0; i < files.length; i++) {
+			if (!files[i].name().contains(".")) {
+				Sprite sprite = new Sprite(Assets.field);
+				sprite.setSize(100, 20);
+				sprite.setPosition(10, 764-25*i-100);
+				types.add(sprite);
+				Label label = new Label(files[i].name(), skin);
+				label.setPosition(sprite.getX()+sprite.getWidth()/2-label.getWidth()/2, sprite.getY()+sprite.getHeight()/2-label.getHeight()/2);
+				labels.add(label);
+				stage.addActor(labels.get(labels.size-1));
+			}
+		}
+		currentType = labels.get(0).getText().toString();
+		System.out.println(currentType);
+		}
+		refreshImages(currentType);
+	}
+	
+	
+	public void refreshImages(String type) {
+		images.clear();
+		imageNames.clear();
+		FileHandle file = Gdx.files.local("Types/"+type);
+		System.out.println(file.isDirectory());
+		if (file.isDirectory()) {
+		FileHandle[] files = file.list();
+		System.out.println(files.length);
+		int posX = 0, posY = 0;
+		for (int i = 0; i < files.length; i++) {
+			if (files[i].name().contains(".png")
+					||files[i].name().contains(".PNG")
+					||files[i].name().contains(".jpg")
+					||files[i].name().contains(".JPG")) {
+				System.out.println(files[i]);
+				Sprite sprite = new Sprite(new Texture(files[i]));
+				sprite.setSize(50, 50);
+				sprite.setPosition(1024-50*3-5*3+55*posX, 764-55*posY -150);
+				images.add(sprite);
+				imageNames.add(files[i].nameWithoutExtension());
+				System.out.println(files[i].nameWithoutExtension());
+				posX++;
+				if (posX > 2) { posX = 0; posY++; }
+			}
+		}
+		currentImg = imageNames.get(0);
+		System.out.println(currentImg);
+		idImg = 0;
+		}
 	}
 	
 	public static void copyToSystemClipboard(String str) {
@@ -206,8 +296,9 @@ public class MainMenu extends ScreenAdapter {
 
 	public void update (float delta) {
 		inputHandler(delta);
-		for (int i = 0; i < leds.size; i++) {
-			leds.get(i).update(delta);
+		if (swipeBtn.getY() == 0)
+		for (int i = 0; i < holsts.size; i++) {
+			holsts.get(i).update(delta);
 		}
 	}
 
@@ -219,10 +310,9 @@ public class MainMenu extends ScreenAdapter {
 		gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 		guiCam.update();
 		
-		for (int i = 0; i < leds.size; i++) {
-			leds.get(i).render(game.batcher);	
+		for (int i = 0; i < holsts.size; i++) {
+			holsts.get(i).render(game.batcher);
 		}
-		
 		game.batcher.setProjectionMatrix(guiCam.combined);
 
 		game.batcher.disableBlending();
@@ -232,14 +322,19 @@ public class MainMenu extends ScreenAdapter {
 		
 		game.batcher.enableBlending();
 		game.batcher.begin();
-
+		for (Sprite sprite:types) {
+			sprite.draw(game.batcher);
+		}
+		for (Sprite sprite:images) {
+			sprite.draw(game.batcher);
+		}
 		game.batcher.end();
 		
 		stage.act(Gdx.graphics.getDeltaTime());
 		stage.draw();
 	}
 	
-	public void ledToBin() {
+	public void createChunk() {
 		swipeBtn.setPosition(0, 250);
 		swipeBtn.setText("X");
 		textArea.setVisible(true);
@@ -247,14 +342,13 @@ public class MainMenu extends ScreenAdapter {
 		loadBtn.setVisible(true);
 		copyBtn.setVisible(true);
 		fileField.setVisible(true);
-		for (int i = 0; i < 100; i++) {
-			textArea.setText(textArea.getText()+"10\n");
+		typeCField.setVisible(true);
+		
+		
+		for (int i = 0; i < holsts.size; i++) {
+			
 		}
-		boolean[][] arr = new boolean[ySize][xSize];
-		for (int i = 0; i < leds.size; i++) {
-			arr[leds.get(i).getY()][leds.get(i).getI()] = leds.get(i).getState();
-		}
-		textArea.clear();
+		/*textArea.clear();
 		textArea.setText("boolean["+ySize+"]["+xSize+"] = {\n");
 		for (int y = 0; y < ySize; y++) {
 			textArea.setText(textArea.getText()+"{");
@@ -265,52 +359,86 @@ public class MainMenu extends ScreenAdapter {
 			textArea.setText(textArea.getText()+"}");
 			if (y != (ySize-1)) textArea.setText(textArea.getText()+",\n");
 		}
-		textArea.setText(textArea.getText()+"\n}");
+		textArea.setText(textArea.getText()+"\n}");*/
 	}
 	
-	public void createLeds() {
+	public void createHolsts() {
 		if (xSize < Integer.parseInt(xField.getText())) {
 			for (int i = (xSize>0?(xSize-1):0); i < Integer.parseInt(xField.getText()); i++) {
 				for (int y = 0; y < Integer.parseInt(yField.getText()); y++) {
-					Box led = new Box(Assets.cileRegion,new Vector2(212+i*75,609-y*75), Assets.cileRegion.getRegionWidth(), Assets.cileRegion.getRegionHeight(), i, y);
-					leds.add(led);
+					Box led = new Box(Assets.rectRegion,new Vector2(212+i*50,609-y*50), Assets.rectRegion.getRegionWidth(), Assets.rectRegion.getRegionHeight(), i, y);
+					holsts.add(led);
 				}
 			}
 		}
 		if (ySize < Integer.parseInt(yField.getText())) {
 			for (int i = 0; i < xSize; i++) {
 				for (int y = (ySize>0?(ySize-1):0); y < Integer.parseInt(yField.getText()); y++) {
-					Box led = new Box(Assets.cileRegion,new Vector2(212+i*75,609-y*75), Assets.cileRegion.getRegionWidth(), Assets.cileRegion.getRegionHeight(), i, y);
-					leds.add(led);
+					Box led = new Box(Assets.rectRegion,new Vector2(212+i*50,609-y*50), Assets.rectRegion.getRegionWidth(), Assets.rectRegion.getRegionHeight(), i, y);
+					holsts.add(led);
 				}
 			}
 		}
 
 		if (xSize > Integer.parseInt(xField.getText()) || ySize > Integer.parseInt(yField.getText())) {
 			
-			Array<Box> delLeds = new Array<Box>();
+			Array<Box> delholsts = new Array<Box>();
 			
-			for (int i = 0; i < leds.size; i++) {
-				if (leds.get(i).getI() >= Integer.parseInt(xField.getText())) {
-					delLeds.add(leds.get(i));
-					//leds.removeIndex(i);
+			for (int i = 0; i < holsts.size; i++) {
+				if (holsts.get(i).getI() >= Integer.parseInt(xField.getText())) {
+					delholsts.add(holsts.get(i));
+					//holsts.removeIndex(i);
 				}
-				if (leds.get(i).getY() >= Integer.parseInt(yField.getText())) {
-					//leds.removeIndex(i);
-					delLeds.add(leds.get(i));
+				if (holsts.get(i).getY() >= Integer.parseInt(yField.getText())) {
+					//holsts.removeIndex(i);
+					delholsts.add(holsts.get(i));
 				}
 			}
 			
-			for (int i = 0; i < delLeds.size; i++) {
-				leds.removeValue(delLeds.get(i), true);
+			for (int i = 0; i < delholsts.size; i++) {
+				holsts.removeValue(delholsts.get(i), true);
 			}
-			delLeds.clear();
+			delholsts.clear();
 		}
 		xSize = Integer.parseInt(xField.getText());
 		ySize = Integer.parseInt(yField.getText());
 	}
 	
 	public void inputHandler(float delta) {
+		
+		if (Gdx.input.justTouched()) {
+			
+			float w = Gdx.graphics.getWidth(), h = Gdx.graphics.getHeight(), 
+			dw = w/1024, dh = h/764, 
+			cX = Gdx.input.getX(), cY = Gdx.input.getY(),
+			x = cX/dw, y = 764 - cY/dh;
+			
+			//StretchViewport svp = new StretchViewport(w, h);
+			
+			//System.out.println(x+" - "+y);
+			for (Sprite sprite:types)
+			if (sprite.getBoundingRectangle().contains(x,y)) {
+				currentType = labels.get(types.indexOf(sprite, false)).getText().toString();
+				System.out.println(currentType);
+				refreshImages(currentType);
+			}
+		}
+		
+		if (Gdx.input.justTouched()) {
+			   
+			float w = Gdx.graphics.getWidth(), h = Gdx.graphics.getHeight(), 
+			dw = w/1024, dh = h/764, 
+			cX = Gdx.input.getX(), cY = Gdx.input.getY(),
+			x = cX/dw, y = 764 - cY/dh;
+			
+			//System.out.println(x+" - "+y);
+			for (Sprite sprite:images)
+			if (sprite.getBoundingRectangle().contains(x,y)) {
+				idImg = images.indexOf(sprite, false);
+				currentImg = imageNames.get(idImg);
+				System.out.println(currentImg);
+			}
+		}
 		
 		if (Gdx.input.isKeyPressed(Keys.ESCAPE)) {
 			System.exit(0);
@@ -349,5 +477,12 @@ public class MainMenu extends ScreenAdapter {
 
 	@Override
 	public void pause () {
+	
+	}
+	
+	@Override
+	public void resize (int width, int height) {
+		stage.getViewport().update(width, height);
+		System.out.println(stage.getViewport().getViewportWidth());
 	}
 }
