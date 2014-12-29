@@ -8,6 +8,13 @@ import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.UnsupportedEncodingException;
 
+import javax.xml.parsers.*;
+import javax.xml.transform.*;
+import javax.xml.transform.dom.*;
+import javax.xml.transform.stream.*;
+
+import org.w3c.dom.*;
+
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.ScreenAdapter;
 import com.badlogic.gdx.Input.Keys;
@@ -27,8 +34,6 @@ import com.badlogic.gdx.scenes.scene2d.ui.TextField;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.viewport.StretchViewport;
-import com.badlogic.gdx.utils.viewport.Viewport;
-import com.sun.prism.image.ViewPort;
 import com.youtoolife.lab_editor.LabEditor;
 import com.youtoolife.lab_editor.objects.Box;
 import com.youtoolife.lab_editor.utils.Assets;
@@ -119,7 +124,7 @@ public class MainMenu extends ScreenAdapter {
 		copyBtn.setVisible(false);
 		stage.addActor(copyBtn);
 		
-		textArea = new TextArea("", skin);
+		textArea = new TextArea("Maze Editor ver. alpha by YouTooLife Team (c)\n<------------------>\n\n", skin);
 		textArea.setPosition(0, 0);
 		textArea.setWidth(1024);
 		textArea.setHeight(250);
@@ -185,23 +190,8 @@ public class MainMenu extends ScreenAdapter {
 		});
 		saveBtn.addListener(new ChangeListener() {
 			public void changed (ChangeEvent event, Actor actor) {
-				OutputStreamWriter myfile = null;
-				try {
-					try {
-						myfile = new OutputStreamWriter( new FileOutputStream(fileField.getText()),"KOI8-R");
-					} catch (FileNotFoundException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
-					myfile.write(textArea.getText());
-					myfile.close();
-				} catch (UnsupportedEncodingException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				} catch (IOException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				} 
+				//textArea.setText(textArea.getText()+"\n"+"");
+				createChunk();
 			}
 		});
 		copyBtn.addListener(new ChangeListener() {
@@ -345,9 +335,50 @@ public class MainMenu extends ScreenAdapter {
 		typeCField.setVisible(true);
 		
 		
-		for (int i = 0; i < holsts.size; i++) {
-			
-		}
+		DocumentBuilder builder = null;
+		
+		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+	      try { builder = factory.newDocumentBuilder(); }
+	      catch (ParserConfigurationException e) { e.printStackTrace(); }
+	      
+	      Document doc = builder.newDocument();
+	      Element RootElement=doc.createElement("Chunk");
+	      RootElement.setAttribute("name", fileField.getText().substring(0, fileField.getText().indexOf(".")));
+	      RootElement.setAttribute("type", typeCField.getText());
+	 
+	        for (int i = 0; i < holsts.size; i++) {
+	        		Element NameElementTitle=doc.createElement("Block");
+	        		//NameElementTitle.appendChild(doc.createTextNode("true"));
+	        		NameElementTitle.setAttribute("type", holsts.get(i).type);
+	        		NameElementTitle.setAttribute("img", holsts.get(i).img);
+	        		NameElementTitle.setAttribute("x", String.valueOf((holsts.get(i).getI())));
+	        		NameElementTitle.setAttribute("y", String.valueOf((holsts.get(i).getY())));
+	        		RootElement.appendChild(NameElementTitle);
+			} 
+	        doc.appendChild(RootElement);
+	 
+	        Transformer t = null;
+			try {
+				t = TransformerFactory.newInstance().newTransformer();
+			} catch (TransformerConfigurationException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (TransformerFactoryConfigurationError e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+	        try {
+	        	t.setOutputProperty(OutputKeys.METHOD, "xml");
+	        	t.setOutputProperty(OutputKeys.INDENT, "yes");
+				t.transform(new DOMSource(doc), new StreamResult(new FileOutputStream(fileField.getText())));
+			} catch (FileNotFoundException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (TransformerException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+	        textArea.setText(textArea.getText()+"\n"+"File '"+fileField.getText()+"' has been created!");
 		/*textArea.clear();
 		textArea.setText("boolean["+ySize+"]["+xSize+"] = {\n");
 		for (int y = 0; y < ySize; y++) {
