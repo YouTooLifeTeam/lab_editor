@@ -2,11 +2,9 @@ package com.youtoolife.lab_editor.screens;
 
 import java.awt.Toolkit;
 import java.awt.datatransfer.StringSelection;
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.OutputStreamWriter;
-import java.io.UnsupportedEncodingException;
 
 import javax.xml.parsers.*;
 import javax.xml.transform.*;
@@ -23,6 +21,7 @@ import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Sprite;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer.ShapeType;
 import com.badlogic.gdx.math.Vector2;
@@ -221,6 +220,11 @@ public class MainMenu extends ScreenAdapter {
 				createChunk();
 			}
 		});
+		loadBtn.addListener(new ChangeListener() {
+			public void changed (ChangeEvent event, Actor actor) {
+				loadChunk();
+			}
+		});
 	}
 	
 	
@@ -336,6 +340,52 @@ public class MainMenu extends ScreenAdapter {
 		
 		stage.act(Gdx.graphics.getDeltaTime());
 		stage.draw();
+	}
+	
+	public void loadChunk() {
+		
+		 try {
+			 
+				File fXmlFile = new File(fileField.getText());
+				DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+				DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
+				Document doc = dBuilder.parse(fXmlFile);
+			 
+				doc.getDocumentElement().normalize();
+				
+				typeCField.setText(doc.getDocumentElement().getAttribute("type"));
+			 
+				NodeList nList = doc.getElementsByTagName("Block");
+				
+				int[][] arr = new int[xSize][ySize];
+				String[] blockType = new String[(xSize*ySize)];
+				String[] blockImg = new String[(xSize*ySize)];
+				for (int temp = 0; temp < nList.getLength(); temp++) {
+			 
+					Node nNode = nList.item(temp);
+					if (nNode.getNodeType() == Node.ELEMENT_NODE) {
+						Element eElement = (Element) nNode;
+						blockType[temp] = eElement.getAttribute("type");
+						blockImg[temp] = eElement.getAttribute("img");
+						arr[Integer.parseInt(eElement.getAttribute("x"))][Integer.parseInt(eElement.getAttribute("y"))] = temp;
+					}
+				}
+				 for (Box box:holsts) {
+					 int id = arr[box.getI()][box.getY()];
+					 box.img = blockImg[id];
+					 box.type = blockType[id];
+					 String fileName = "Types/"+box.type+"/"+box.img;
+					 box.setTexture(new TextureRegion(new Texture(Gdx.files.local(
+							 fileName
+							 +(Gdx.files.local(fileName+".png").exists()?".png":"")
+							 +(Gdx.files.local(fileName+".jpg").exists()?".jpg":"")))), 
+							  box.getWidth(), 
+							  box.getHeight());
+				 }
+			    } catch (Exception e) {
+				e.printStackTrace();
+			    }
+		 textArea.setText(textArea.getText()+"\n"+"File '"+fileField.getText()+"' has been loaded!");
 	}
 	
 	public void createChunk() {
