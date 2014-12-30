@@ -23,6 +23,8 @@ import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Sprite;
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer.ShapeType;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Stage;
@@ -52,9 +54,11 @@ public class MainMenu extends ScreenAdapter {
 	Array<String> imageNames = new Array<String>();
 	
 	public static String currentType = "", currentImg = "";
-	public static int idImg = 0;
+	public static int idImg = 0, idType = 0;
 	
 	LabEditor game;
+	
+	ShapeRenderer shapeRender = new ShapeRenderer();
 	
 	public static OrthographicCamera guiCam;
 	int xSize, ySize;
@@ -243,6 +247,7 @@ public class MainMenu extends ScreenAdapter {
 		}
 		currentType = labels.get(0).getText().toString();
 		System.out.println(currentType);
+		idType = 0;
 		}
 		refreshImages(currentType);
 	}
@@ -319,6 +324,15 @@ public class MainMenu extends ScreenAdapter {
 			sprite.draw(game.batcher);
 		}
 		game.batcher.end();
+		
+		shapeRender.setProjectionMatrix(guiCam.combined);
+		shapeRender.begin(ShapeType.Line);
+		shapeRender.setColor(0.f, 1.f, 0.f, 0.f);
+		shapeRender.box(types.get(idType).getX(), types.get(idType).getY(), 0, 
+				types.get(idType).getWidth(), types.get(idType).getHeight(), 0);
+		shapeRender.box(images.get(idImg).getX(), images.get(idImg).getY(), 0, 
+				images.get(idImg).getWidth(), images.get(idImg).getHeight(), 0);
+		shapeRender.end();
 		
 		stage.act(Gdx.graphics.getDeltaTime());
 		stage.draw();
@@ -449,7 +463,8 @@ public class MainMenu extends ScreenAdapter {
 			//System.out.println(x+" - "+y);
 			for (Sprite sprite:types)
 			if (sprite.getBoundingRectangle().contains(x,y)) {
-				currentType = labels.get(types.indexOf(sprite, false)).getText().toString();
+				idType = types.indexOf(sprite, false);
+				currentType = labels.get(idType).getText().toString();
 				System.out.println(currentType);
 				refreshImages(currentType);
 			}
