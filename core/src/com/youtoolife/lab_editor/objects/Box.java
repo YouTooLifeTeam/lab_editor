@@ -15,8 +15,8 @@ public class Box {
 	float width, height;
 	int i, y;
 	boolean turn_on;
-	public String type = "";
-	public String img = "";
+	public String type = "floor";
+	public String img = "floor";
 
   public Box(TextureRegion textureRegion, Vector2 position, float w, float h, int i, int y) {		
 	this.texture = textureRegion;

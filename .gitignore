@@ -1,5 +1,6 @@
 ## Java
 
+*.chunk
 *.class
 *.war
 *.ear
@@ -61,3 +62,4 @@ build/
 
 ## OS Specific
 .DS_Store
+desktop/LED.c
