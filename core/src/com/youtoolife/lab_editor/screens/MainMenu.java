@@ -6,6 +6,8 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 
+import javax.swing.JFileChooser;
+import javax.swing.filechooser.FileFilter;
 import javax.xml.parsers.*;
 import javax.xml.transform.*;
 import javax.xml.transform.dom.*;
@@ -49,12 +51,15 @@ public class MainMenu extends ScreenAdapter {
 			generateBtn, centerBtn;
 
 	Array<Label> labels = new Array<Label>();
+	public static Array<Label> idLab = new Array<Label>();
 	Array<Sprite> types = new Array<Sprite>();
 	public static Array<Sprite> images = new Array<Sprite>();
 	Array<String> imageNames = new Array<String>();
 
 	public static String currentType = "", currentImg = "";
-	public static int idImg = 0, idType = 0;
+	public static int idImg = 0, idType = 0, idX = 0, idY = 0;
+	
+	boolean firsRun = true;
 
 	LabEditor game;
 
@@ -78,6 +83,8 @@ public class MainMenu extends ScreenAdapter {
 		refreshTypes();
 
 		createHolsts();
+		
+		loadChunk();
 
 	}
 
@@ -93,7 +100,7 @@ public class MainMenu extends ScreenAdapter {
 		swipeBtn.setText("^^^");
 		stage.addActor(swipeBtn);
 		// /
-		fileField = new TextField("Untitled.chunk", skin);
+		fileField = new TextField("chunks/Untitled.chunk", skin);
 		fileField.setWidth(200);
 		fileField.setHeight(30);
 		fileField.setPosition(130, 250 + 30);
@@ -186,7 +193,10 @@ public class MainMenu extends ScreenAdapter {
 		saveBtn.addListener(new ChangeListener() {
 			public void changed(ChangeEvent event, Actor actor) {
 				// textArea.setText(textArea.getText()+"\n"+"");
-				createChunk();
+				if (Gdx.files.local(fileField.getText()).exists())
+					Gdx.files.local(fileField.getText()).copyTo(new FileHandle(fileField.getText()+".bak"));
+				    createChunk();
+				
 			}
 		});
 		copyBtn.addListener(new ChangeListener() {
@@ -223,18 +233,16 @@ public class MainMenu extends ScreenAdapter {
 		labels.clear();
 		types.clear();
 		images.clear();
-		FileHandle file = Gdx.files.local("Types");
-		System.out.println(file.isDirectory());
-		if (file.isDirectory()) {
-			FileHandle[] files = file.list();
-			System.out.println(files.length);
+		FileHandle file = Gdx.files.local("types.lst");
+		//System.out.println(file.isDirectory());
+			String[] files = file.readString().split("\n");
+			//System.out.println(files.length);
 			for (int i = 0; i < files.length; i++) {
-				if (!files[i].name().contains(".")) {
 					Sprite sprite = new Sprite(Assets.field);
 					sprite.setSize(100, 20);
 					sprite.setPosition(10, 764 - 25 * i - 100);
 					types.add(sprite);
-					Label label = new Label(files[i].name(), skin);
+					Label label = new Label(files[i], skin);
 					label.setPosition(
 							sprite.getX() + sprite.getWidth() / 2
 									- label.getWidth() / 2,
@@ -242,10 +250,8 @@ public class MainMenu extends ScreenAdapter {
 									- label.getHeight() / 2);
 					labels.add(label);
 					stage.addActor(labels.get(labels.size - 1));
-				}
-			}
 			currentType = labels.get(0).getText().toString();
-			System.out.println(currentType);
+			//System.out.println(currentType);
 			idType = 0;
 		}
 		refreshImages(currentType);
@@ -254,8 +260,8 @@ public class MainMenu extends ScreenAdapter {
 	public void refreshImages(String type) {
 		images.clear();
 		imageNames.clear();
-		FileHandle file = Gdx.files.local("Types/" + type);
-		System.out.println(file.isDirectory());
+		FileHandle file = Gdx.files.local("textures");
+		//System.out.println(file.isDirectory());
 		if (file.isDirectory()) {
 			FileHandle[] files = file.list();
 			System.out.println(files.length);
@@ -293,10 +299,13 @@ public class MainMenu extends ScreenAdapter {
 
 	public void update(float delta) {
 		inputHandler(delta);
+		
 		if (swipeBtn.getY() == 0)
 			for (int i = 0; i < holsts.size; i++) {
 				holsts.get(i).update(delta);
 			}
+		
+		
 	}
 
 	public void draw() {
@@ -309,6 +318,13 @@ public class MainMenu extends ScreenAdapter {
 
 		for (int i = 0; i < holsts.size; i++) {
 			holsts.get(i).render(game.batcher);
+			
+			/*if (holsts.get(i).id != 0) {
+				idLab.get(i).setText(String.valueOf(holsts.get(i).id));
+				System.out.print(idLab.get(i).getText());
+			}
+			else
+				idLab.get(i).setText("");*/
 		}
 		game.batcher.setProjectionMatrix(guiCam.combined);
 
@@ -330,10 +346,15 @@ public class MainMenu extends ScreenAdapter {
 		shapeRender.setProjectionMatrix(guiCam.combined);
 		shapeRender.begin(ShapeType.Line);
 		shapeRender.setColor(0.f, 1.f, 0.f, 0.f);
+	////////////
 		shapeRender.box(types.get(idType).getX(), types.get(idType).getY(), 0,
 				types.get(idType).getWidth(), types.get(idType).getHeight(), 0);
+		
 		shapeRender.box(images.get(idImg).getX(), images.get(idImg).getY(), 0,
 				images.get(idImg).getWidth(), images.get(idImg).getHeight(), 0);
+		
+		shapeRender.box(212+idX*50, 609-idY*50, 0, 50, 50, 0);
+	//////////	
 		shapeRender.end();
 
 		stage.act(Gdx.graphics.getDeltaTime());
@@ -344,7 +365,7 @@ public class MainMenu extends ScreenAdapter {
 
 		try {
 
-			File fXmlFile = new File(fileField.getText());
+			File fXmlFile = new File(!firsRun?fileField.getText():"chunks/SAMPLE.chunk");
 			DocumentBuilderFactory dbFactory = DocumentBuilderFactory
 					.newInstance();
 			DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
@@ -357,6 +378,7 @@ public class MainMenu extends ScreenAdapter {
 			int[][] arr = new int[xSize][ySize];
 			String[] blockType = new String[(xSize * ySize)];
 			String[] blockImg = new String[(xSize * ySize)];
+			int[] blockId = new int[(xSize * ySize)];
 			for (int temp = 0; temp < nList.getLength(); temp++) {
 
 				Node nNode = nList.item(temp);
@@ -364,6 +386,7 @@ public class MainMenu extends ScreenAdapter {
 					Element eElement = (Element) nNode;
 					blockType[temp] = eElement.getAttribute("type");
 					blockImg[temp] = eElement.getAttribute("img");
+					blockId[temp] = blockType[temp].contains("Door")?Integer.parseInt(eElement.getAttribute("id")):0;
 					arr[Integer.parseInt(eElement.getAttribute("x"))][Integer
 							.parseInt(eElement.getAttribute("y"))] = temp;
 				}
@@ -372,7 +395,8 @@ public class MainMenu extends ScreenAdapter {
 				int id = arr[box.getI()][box.getY()];
 				box.img = blockImg[id];
 				box.type = blockType[id];
-				String fileName = "Types/" + box.type + "/" + box.img;
+				box.id = blockId[id];
+				String fileName = "textures/"+ /*+ box.type + "/" + */box.img;
 				box.setTexture(
 						new TextureRegion(new Texture(Gdx.files
 								.local(fileName
@@ -381,6 +405,11 @@ public class MainMenu extends ScreenAdapter {
 										+ (Gdx.files.local(fileName + ".jpg")
 												.exists() ? ".jpg" : "")))),
 						box.getWidth(), box.getHeight());
+				
+				for(Label lab:idLab) 
+					if (box.contains(lab.getX()+guiCam.position.x-512, lab.getY()+guiCam.position.y-384)) {
+						lab.setText(box.id==0?"":String.valueOf(box.id));
+					}
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -410,7 +439,7 @@ public class MainMenu extends ScreenAdapter {
 		int count = 0;
 		for(Box b: holsts)
 			if(b.getI()==0||b.getI()==11||b.getY()==0||b.getY()==11)
-				if(b.type=="floor")
+				if(b.type.contains("Door"))
 					count++;
 		count/=2;
 		String type = "NoExit";
@@ -421,7 +450,7 @@ public class MainMenu extends ScreenAdapter {
 		if(count == 4)
 			type = "QuadroExit";
 		if(count == 2){
-			type = "";
+			type = "DoubleExit";
 		}
 		
 		
@@ -444,6 +473,9 @@ public class MainMenu extends ScreenAdapter {
 					String.valueOf((holsts.get(i).getI())));
 			NameElementTitle.setAttribute("y",
 					String.valueOf((holsts.get(i).getY())));
+			if (holsts.get(i).type.contains("Door"))
+				NameElementTitle.setAttribute("id",
+						String.valueOf((holsts.get(i).id)));
 			RootElement.appendChild(NameElementTitle);
 		}
 		doc.appendChild(RootElement);
@@ -459,6 +491,7 @@ public class MainMenu extends ScreenAdapter {
 			e.printStackTrace();
 		}
 		try {
+			
 			t.setOutputProperty(OutputKeys.METHOD, "xml");
 			t.setOutputProperty(OutputKeys.INDENT, "yes");
 			t.transform(new DOMSource(doc), new StreamResult(
@@ -495,6 +528,10 @@ public class MainMenu extends ScreenAdapter {
 							Assets.rectRegion.getRegionWidth(),
 							Assets.rectRegion.getRegionHeight(), i, y);
 					holsts.add(led);
+					Label label = new Label("", skin);
+					label.setPosition(212+i*50+25-5, 609 - y * 50+25-5);
+					idLab.add(label);
+					stage.addActor(idLab.get(idLab.size - 1));
 				}
 			}
 		}
@@ -507,6 +544,10 @@ public class MainMenu extends ScreenAdapter {
 							Assets.rectRegion.getRegionWidth(),
 							Assets.rectRegion.getRegionHeight(), i, y);
 					holsts.add(led);
+					Label label = new Label("", skin);
+					label.setPosition(212+i*50+25-5, 609 - y * 50+25-5);
+					idLab.add(label);
+					stage.addActor(idLab.get(idLab.size - 1));
 				}
 			}
 		}
@@ -515,22 +556,29 @@ public class MainMenu extends ScreenAdapter {
 				|| ySize > Integer.parseInt(yField.getText())) {
 
 			Array<Box> delholsts = new Array<Box>();
+			Array<Label> dellabs = new Array<Label>();
 
 			for (int i = 0; i < holsts.size; i++) {
 				if (holsts.get(i).getI() >= Integer.parseInt(xField.getText())) {
 					delholsts.add(holsts.get(i));
+					dellabs.add(idLab.get(i));
 					// holsts.removeIndex(i);
 				}
 				if (holsts.get(i).getY() >= Integer.parseInt(yField.getText())) {
 					// holsts.removeIndex(i);
 					delholsts.add(holsts.get(i));
+					dellabs.add(idLab.get(i));
 				}
 			}
 
 			for (int i = 0; i < delholsts.size; i++) {
 				holsts.removeValue(delholsts.get(i), true);
 			}
+			for (int i = 0; i < dellabs.size; i++) {
+				idLab.removeValue(dellabs.get(i), true);
+			}
 			delholsts.clear();
+			dellabs.clear();
 		}
 		xSize = Integer.parseInt(xField.getText());
 		ySize = Integer.parseInt(yField.getText());
@@ -552,7 +600,7 @@ public class MainMenu extends ScreenAdapter {
 					idType = types.indexOf(sprite, false);
 					currentType = labels.get(idType).getText().toString();
 					System.out.println(currentType);
-					refreshImages(currentType);
+					//refreshImages(currentType);
 				}
 		}
 
@@ -574,7 +622,7 @@ public class MainMenu extends ScreenAdapter {
 		if (Gdx.input.isKeyPressed(Keys.ESCAPE)) {
 			System.exit(0);
 		}
-		if (Gdx.input.isKeyPressed(Keys.ENTER)) {
+		/*if (Gdx.input.isKeyPressed(Keys.ENTER)) {
 
 		}
 		int speed = 350;
@@ -595,7 +643,7 @@ public class MainMenu extends ScreenAdapter {
 		}
 		if (Gdx.input.isKeyPressed(Keys.DOWN)) {
 			guiCam.position.y = guiCam.position.y - speed * delta;
-		}
+		}*/
 	}
 
 	@Override

@@ -1,11 +1,12 @@
 package com.youtoolife.lab_editor.objects;
 
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Input.Buttons;
+import com.badlogic.gdx.Input.TextInputListener;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.Vector2;
 import com.youtoolife.lab_editor.screens.MainMenu;
-import com.youtoolife.lab_editor.utils.Assets;
 
 public class Box {
 
@@ -13,10 +14,11 @@ public class Box {
 	
 	Vector2 position = new Vector2();
 	float width, height;
-	int i, y;
-	boolean turn_on;
+	public int i, y, id = 0;
+	boolean turn_on, dialog = false;
 	public String type = "floor";
 	public String img = "floor";
+	
 
   public Box(TextureRegion textureRegion, Vector2 position, float w, float h, int i, int y) {		
 	this.texture = textureRegion;
@@ -41,14 +43,36 @@ public class Box {
 					x = cX/dw, y = 764 - cY/dh;
 		  
 		  if (contains(x+MainMenu.guiCam.position.x-512, y+MainMenu.guiCam.position.y-384)) {
-			  if (!turn_on) {
+			  //if (!turn_on) {
+			  if (Gdx.input.isButtonPressed(Buttons.LEFT)) {
 			  setTexture(new TextureRegion(MainMenu.images.get(MainMenu.idImg).getTexture()), 
 					  MainMenu.images.get(MainMenu.idImg).getTexture().getWidth(), 
 					  MainMenu.images.get(MainMenu.idImg).getTexture().getHeight());
 			  this.type = MainMenu.currentType;
 			  this.img = MainMenu.currentImg;
 			  turn_on = true;
-			  } 
+			  }
+			  MainMenu.idX = this.i;
+			  MainMenu.idY = this.y;
+			  if (Gdx.input.isButtonPressed(Buttons.RIGHT) && !dialog) {
+				  dialog = true;
+				 Gdx.input.getTextInput(new TextInputListener() {
+					
+					@Override
+					public void input(String text) {
+						id = Integer.valueOf(text);
+						MainMenu.idLab.get(MainMenu.holsts.indexOf(Box.this, true)).setText(text);
+						dialog = false;
+					}
+					
+					@Override
+					public void canceled() {
+						System.out.print("Cancel");
+						dialog = false;
+					}
+				}, type + " - id:", String.valueOf(id));
+			  }
+			 /* } 
 			  else
 			  {
 				  setTexture(Assets.rectRegion, Assets.rectRegion.getRegionWidth(), Assets.rectRegion.getRegionHeight());
@@ -57,7 +81,7 @@ public class Box {
 				  this.img = "";
 				  this.width = 50;
 				  this.height = 50;
-			  }
+			  }*/
 		  }
 		}
   }
